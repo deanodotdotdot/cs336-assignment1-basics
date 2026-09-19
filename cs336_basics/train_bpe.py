@@ -1,5 +1,33 @@
 import regex as re
 import collections
+from cs336_basics.pretokenization_example import find_chunk_boundaries
+from multiprocessing import Pool
+
+PAT = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
+
+def process_chunk(filename, start_byte, size, special_tokens: list[str]) -> dict[tuple[bytes, ...], int]:
+    pre_tokens: dict[tuple[bytes, ...], int] = {}
+
+    with open(filename, 'rb') as f:
+        f.seek(start_byte)
+        # Read exactly the bytes allocated for this chunk
+        chunk_data = f.read(size)
+        pattern = "|".join(re.escape(t) for t in special_tokens)
+        documents = re.split(pattern, chunk_data.decode("utf-8"))
+        for doc in documents:
+            text_iterator = re.finditer(PAT, doc)
+            for t in text_iterator:
+                token_list = []
+                for char in t.group():
+                    utf8_bytes = char.encode("utf-8") 
+                    for b in utf8_bytes:
+                        token_list.append(b.to_bytes())
+                token_tuple = tuple(token_list)
+                if token_tuple not in pre_tokens:
+                    pre_tokens[token_tuple] = 1
+                else:
+                    pre_tokens[token_tuple] += 1
+    return pre_tokens
 
 
 
@@ -23,26 +51,32 @@ def train_bpe_tokenizer(input_path: str, vocab_size: int, special_tokens: list[s
 
 
     # pre tokenization
-    # TODO: parallelize using multiprocessing
     pre_tokens: dict[tuple[bytes, ...], int] = {}
-    PAT = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
-    with open(input_path, "r", encoding="utf-8") as file:
-        txt_file = file.read()
-        pattern = "|".join(re.escape(t) for t in special_tokens)
-        documents = re.split(pattern, txt_file)
-        for doc in documents:
-            text_iterator = re.finditer(PAT, doc)
-            for t in text_iterator:
-                token_list = []
-                for char in t.group():
-                    utf8_bytes = char.encode("utf-8") 
-                    for b in utf8_bytes:
-                        token_list.append(b.to_bytes())
-                token_tuple = tuple(token_list)
-                if token_tuple not in pre_tokens:
-                    pre_tokens[token_tuple] = 1
-                else:
-                    pre_tokens[token_tuple] += 1
+
+    num_processes = 16
+    with open(input_path, "rb") as file:
+        boundaries = find_chunk_boundaries(file, num_processes, b"<|endoftext|>")
+
+    # Prepare jobs for each chunk: (filename, start_byte, size, special_tokens)
+    jobs = []
+    for i in range(0, len(boundaries) - 1):
+        start_byte = boundaries[i]
+        size = boundaries[i + 1] - boundaries[i]
+        jobs.append((input_path, start_byte, size, special_tokens))
+
+    # Use multiprocessing to process chunks in parallel
+    with Pool(num_processes) as p:
+        results = p.starmap(process_chunk, jobs)
+
+    # Merge partial results
+    for partial_pt in results:
+        for (k, v) in partial_pt.items():
+            if k in pre_tokens:
+                pre_tokens[k] += v
+            else:
+                pre_tokens[k] = v
+        
+    
 
     # compute byte level splits
     merges = []
