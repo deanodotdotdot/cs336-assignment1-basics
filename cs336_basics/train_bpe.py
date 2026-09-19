@@ -83,7 +83,8 @@ def train_bpe_tokenizer(input_path: str, vocab_size: int, special_tokens: list[s
     while len(vocabulary) < vocab_size:
         pairs = collections.defaultdict(int)
         for token, freq in pre_tokens.items():
-            for i in range(len(token)-1):
+            token_len = len(token)
+            for i in range(token_len-1):
                 byte_tuple = (token[i],token[i+1])
                 pairs[byte_tuple] += freq
         
@@ -99,11 +100,12 @@ def train_bpe_tokenizer(input_path: str, vocab_size: int, special_tokens: list[s
         # update pre tokens tuples
         new_pt = {}
         for token, freq in pre_tokens.items():
+            token_len = len(token)
             new_token_list = []
             # if the 2 byte seq is in there, make a new tuple token with it
             i = 0
-            while i < len(token):
-                if i+1 < len(token) and (token[i],token[i+1]) == best:
+            while i < token_len:
+                if i+1 < token_len and (token[i],token[i+1]) == best:
                     new_token_list.append(best_bytes)
                     i += 2
                 else:
