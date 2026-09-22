@@ -19,7 +19,11 @@ import modal
 
 app = modal.App("cs336-openwebtext-bpe")
 
-image = modal.Image.debian_slim().pip_install("regex")
+image = (
+    modal.Image.debian_slim()
+    .pip_install("regex")
+    .add_local_dir("cs336_basics", "/root/cs336_basics")
+)
 
 DATA_URL = (
     "https://huggingface.co/datasets/stanford-cs336/owt-sample/"
