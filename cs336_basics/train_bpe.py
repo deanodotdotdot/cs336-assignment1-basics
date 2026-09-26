@@ -1,9 +1,23 @@
 import regex as re
 import collections
+import heapq
 from cs336_basics.pretokenization_example import find_chunk_boundaries
 from multiprocessing import Pool
 
 PAT = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
+
+
+class _PairHeapEntry:
+    """A max-heap entry with the BPE frequency/tie-break ordering."""
+
+    __slots__ = ("count", "pair")
+
+    def __init__(self, count: int, pair: tuple[bytes, bytes]):
+        self.count = count
+        self.pair = pair
+
+    def __lt__(self, other):
+        return (self.count, self.pair) > (other.count, other.pair)
 
 def process_chunk(filename, start_byte, size, special_tokens: list[str]) -> dict[tuple[bytes, ...], int]:
     pre_tokens: dict[tuple[bytes, ...], int] = {}
@@ -85,13 +99,24 @@ def train_bpe_tokenizer(input_path: str, vocab_size: int, special_tokens: list[s
             pair_counts[pair] += freq
             pair_to_tokens[pair].add(token)
 
+    # Keep the best pair in a lazy heap. Entries whose count is no longer
+    # current are discarded when they reach the top of the heap.
+    pair_heap = [_PairHeapEntry(count, pair) for pair, count in pair_counts.items()]
+    heapq.heapify(pair_heap)
+
+    def push_current_pair(pair):
+        if pair in pair_counts:
+            heapq.heappush(pair_heap, _PairHeapEntry(pair_counts[pair], pair))
+
     # compute byte level splits
     merges = []
     while len(vocabulary) < vocab_size:
-        # find the highest frequency one (tiebreak on lexicographically greater)
-        best: tuple[bytes, bytes] = max(
-            pair_counts, key=lambda x: (pair_counts[x], x)
-        )
+        # Find the highest-frequency pair, breaking ties lexicographically.
+        while True:
+            entry = heapq.heappop(pair_heap)
+            best = entry.pair
+            if pair_counts.get(best) == entry.count:
+                break
         best_bytes = b"".join(best)
         # add to vocab and merges
 
@@ -117,6 +142,8 @@ def train_bpe_tokenizer(input_path: str, vocab_size: int, special_tokens: list[s
                 if pair_counts[pair] == 0:
                     del pair_counts[pair]
                     del pair_to_tokens[pair]
+                else:
+                    push_current_pair(pair)
 
             # Apply the merge to this token type.
             new_token_list = []
@@ -137,8 +164,7 @@ def train_bpe_tokenizer(input_path: str, vocab_size: int, special_tokens: list[s
                 pair = (new_token[i], new_token[i + 1])
                 pair_counts[pair] += freq
                 pair_to_tokens[pair].add(new_token)
+                push_current_pair(pair)
 
     assert len(vocabulary) == 256 + len(special_tokens) + len(merges)
     return (vocabulary, merges)
-
-
