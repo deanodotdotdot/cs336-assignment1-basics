@@ -13,8 +13,18 @@ with open('merges.pkl', 'rb') as file, open('vocab.pkl', 'rb') as file2:
 
     tok = Tokenizer(vocab, merges, ["<|endoftext|>"])
 
-    output = tok.encode("s")
-    # output = tok.encode("well hello <|endoftext|> there!")
+    # with open('/Users/dean/dev/cs336-assignment1-basics/tests/fixtures/special_token_double_newlines_non_whitespace.txt', 'r') as file3:
+    #     text = file3.read()
+    #     output = tok.encode(text)
+   
+    #     # output = tok.encode("well hello <|endoftext|> there!")
+    #     print(output)
+    #     input = tok.decode(output)
+    #     print(input)
+
+
+    # output = tok.encode("s")
+    output = tok.encode("well hello <|endoftext|> there!")
     print(output)
 
     for id in output:

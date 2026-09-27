@@ -22,37 +22,8 @@ class Tokenizer:
             merges = pickle.load(file2)
         return cls(vocab, merges, special_tokens)
 
-    def encode(self, text: str) -> list[int]:
-        # Encode an input text into a sequence of token IDs.
 
-        if self.special_tokens is not None and len( self.special_tokens) > 0:
-            # Sort special_tokens longest-first to match longest tokens first
-            sorted_special_tokens = sorted(self.special_tokens, key=len, reverse=True)
-            # Unroll the regex join so longest are matched first
-            pattern = "|".join(re.escape(t) for t in sorted_special_tokens)
-            # Use capturing parentheses to keep the pattern tokens in the splits
-            split_regex = re.compile(f"({pattern})")
-            special_splits = split_regex.split(text)
-            print(special_splits)
-        else:
-            special_splits = [text]
-
-        # pretokenize
-        token_list: list[bytes] = []
-        for ss in special_splits:
-            if self.special_tokens is not None and ss in self.special_tokens:
-                encoded = ss.encode('utf-8')
-                # print(ss)
-                # print('special: ', self.vocab_rev[encoded])
-                token_list.append(encoded)
-            else:
-                text_iterator = re.finditer(PAT, ss)
-                for t in text_iterator:
-                    for char in t.group():
-                        utf8_bytes = char.encode("utf-8") 
-                        for b in utf8_bytes:
-                            token_list.append(b.to_bytes())
-
+    def handle_merges(self, token_list: list[bytes]) -> list[int]:
         while True:
             # iterate through and find all pairs
             best_score = 0
@@ -80,6 +51,41 @@ class Tokenizer:
                     token_list.insert(i, l + r)
                
                 i += 1
+
+
+    def encode(self, text: str) -> list[int]:
+        # Encode an input text into a sequence of token IDs.
+
+        if self.special_tokens is not None and len(self.special_tokens) > 0:
+            # Sort special_tokens longest-first to match longest tokens first
+            sorted_special_tokens = sorted(self.special_tokens, key=len, reverse=True)
+            # Unroll the regex join so longest are matched first
+            pattern = "|".join(re.escape(t) for t in sorted_special_tokens)
+            # Use capturing parentheses to keep the pattern tokens in the splits
+            split_regex = re.compile(f"({pattern})")
+            special_splits = split_regex.split(text)
+            # print(special_splits)
+        else:
+            special_splits = [text]
+
+        # pretokenize
+        out_list: list[int] = []
+        for ss in special_splits:
+            if self.special_tokens is not None and ss in self.special_tokens:
+                encoded = ss.encode('utf-8')
+                out_list.append(self.vocab_rev[encoded])
+            else:
+                text_iterator = re.finditer(PAT, ss)
+                for t in text_iterator:
+                    out_bytes = []
+                    for char in t.group():
+                        utf8_bytes = char.encode("utf-8") 
+                        for b in utf8_bytes:
+                            out_bytes.append(b.to_bytes())
+                    out_list += self.handle_merges(out_bytes)
+        return out_list
+
+        
 
     def encode_iterable(self, iterable: Iterable[str]) -> Iterator[int]:
         # Given an iterable of strings (e.g., a Python file handle), return a generator that lazily yields token IDs. This is
