@@ -1,10 +1,18 @@
-from train_bpe import train_bpe_tokenizer
-import pickle
+from cs336_basics.net.linear import Linear
+from tests.adapters import run_linear
+from einops import einsum
+import torch
 
 if __name__ == "__main__":
-    (vocab, merges) = train_bpe_tokenizer("/Users/dean/data/tinystories/TinyStoriesV2-GPT4-train.txt", 10_000, ["<|endoftext|>"])
-    with open("vocab.pkl", "wb") as f:
-        pickle.dump(vocab, f)
-    with open("merges.pkl", "wb") as f:
-        pickle.dump(merges, f)
+    W = torch.tensor([[1.0, 0.0, 2.0], [0.0, 1.0, 1.0]])
+    x = torch.tensor([1.0, 2.0, 3.0])
 
+
+    #  Try an x of shape (4, 3) in goo.py
+
+    print(W.shape)
+    print(x.shape)
+
+    out = run_linear(3, 2, W, x)
+    # y.forward(x)
+    print(out)  # Should print [7, 5]
