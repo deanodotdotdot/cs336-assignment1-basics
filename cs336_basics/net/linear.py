@@ -16,7 +16,7 @@ class Linear(torch.nn.modules.Module):
         self.in_features = in_features
         self.out_features = out_features
 
-        w = torch.nn.init.trunc_normal_(empty, 0, self.sigma * self.sigma, -3 * self.sigma, 3 * self.sigma)
+        w = torch.nn.init.trunc_normal_(empty, 0, self.sigma, -3 * self.sigma, 3 * self.sigma)
         self.w = torch.nn.Parameter(w)
         
     # Apply the linear transformation to the input.

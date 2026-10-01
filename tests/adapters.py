@@ -6,6 +6,7 @@ from typing import IO, Any, BinaryIO
 from cs336_basics.train_bpe import train_bpe_tokenizer
 from cs336_basics.tokenizer import Tokenizer
 from cs336_basics.net.linear import Linear
+from cs336_basics.net.embedding import Embedding
 
 import numpy.typing as npt
 import torch
@@ -57,7 +58,11 @@ def run_embedding(
         Float[Tensor, "... d_model"]: Batch of embeddings returned by your Embedding layer.
     """
 
-    raise NotImplementedError
+    e = Embedding(vocab_size, d_model)
+    weights_dict = {}
+    weights_dict['embeds'] = weights
+    e.load_state_dict(weights_dict)
+    return e(token_ids)
 
 
 def run_swiglu(
