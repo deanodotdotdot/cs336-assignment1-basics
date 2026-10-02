@@ -2,7 +2,7 @@ import torch
 from einops import einsum
 import numpy as np
 
-class Linear(torch.nn.modules.Module):
+class Linear(torch.nn.Module):
     def __init__(self, in_features: int, out_features: int, device: torch.device | None=None, dtype: torch.dtype | None = None):
         super().__init__()
 

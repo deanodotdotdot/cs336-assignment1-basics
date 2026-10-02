@@ -62,7 +62,7 @@ def run_embedding(
 
     e = Embedding(vocab_size, d_model)
     weights_dict = {}
-    weights_dict['embeds'] = weights
+    weights_dict['weight'] = weights
     e.load_state_dict(weights_dict)
     return e(token_ids)
 
@@ -400,7 +400,7 @@ def run_rmsnorm(
     """
 
     weights_dict = {}
-    weights_dict['gain'] = weights
+    weights_dict['weight'] = weights
     l = RMSNorm(d_model, eps, None, None)
     l.load_state_dict(weights_dict)
     return l(in_features)
