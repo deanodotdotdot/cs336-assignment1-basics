@@ -8,6 +8,7 @@ from cs336_basics.tokenizer import Tokenizer
 from cs336_basics.net.linear import Linear
 from cs336_basics.net.embedding import Embedding
 from cs336_basics.net.rms_norm import RMSNorm
+from cs336_basics.net.swiglu import Swiglu
 
 import numpy.typing as npt
 import torch
@@ -34,7 +35,7 @@ def run_linear(
     """
 
     weights_dict = {}
-    weights_dict['w'] = weights
+    weights_dict['weight'] = weights
     l = Linear(d_in, d_out, None, None)
     l.load_state_dict(weights_dict)
     return l(in_features)
@@ -95,7 +96,14 @@ def run_swiglu(
     # swiglu.w1.weight.data = w1_weight
     # swiglu.w2.weight.data = w2_weight
     # swiglu.w3.weight.data = w3_weight
-    raise NotImplementedError
+
+    swig = Swiglu(d_model, d_ff)
+    weights_dict = {}
+    weights_dict['w1.weight'] = w1_weight
+    weights_dict['w2.weight'] = w2_weight
+    weights_dict['w3.weight'] = w3_weight
+    swig.load_state_dict(weights_dict)
+    return swig(in_features)
 
 
 def run_scaled_dot_product_attention(
